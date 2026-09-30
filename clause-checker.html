@@ -1,0 +1,1574 @@
+<meta charset="UTF-8">
+<title>Clause Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+  :root {
+    --ground: #111113;
+    --surface: #1c1c1f;
+    --surface-raised: #2a2a2e;
+    --surface-doc: #1e1e22;
+    --border: #3a3a3f;
+    --border-subtle: #2e2e33;
+    --text-primary: #e8e8ec;
+    --text-secondary: #c4c4ca;
+    --text-muted: #8a8a94;
+    --text-dim: #5e5e66;
+    --success: #34d399;
+    --success-bg: rgba(52, 211, 153, 0.08);
+    --success-border: rgba(52, 211, 153, 0.18);
+    --warning: #fbbf24;
+    --warning-bg: rgba(251, 191, 36, 0.08);
+    --warning-border: rgba(251, 191, 36, 0.18);
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.08);
+    --danger-border: rgba(248, 113, 113, 0.18);
+    --accent: #6886c5;
+    --accent-bg: rgba(104, 134, 197, 0.10);
+    --accent-border: rgba(104, 134, 197, 0.25);
+    --rail-w: 48px;
+    --font-ui: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-doc: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* ── APP SHELL ── */
+  .app {
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    height: 100vh;
+  }
+
+  /* ── RAIL ── */
+  .rail {
+    background: var(--ground);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 2px;
+  }
+  .rail-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .rail-icon:hover { background: var(--surface-raised); color: var(--text-muted); }
+  .rail-icon.active { background: var(--surface-raised); color: var(--text-primary); }
+  .rail-icon svg { width: 18px; height: 18px; }
+  .rail-spacer { flex: 1; }
+  .rail-divider { width: 24px; height: 1px; background: var(--border-subtle); margin: 6px 0; }
+  .rail-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  /* ── MAIN WORKSPACE ── */
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* ── DOCUMENT PANEL ── */
+  .doc-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .doc-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .doc-header-tabs {
+    display: flex;
+    gap: 2px;
+  }
+  .doc-tab {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .doc-tab:hover { background: var(--surface-raised); color: var(--text-secondary); }
+  .doc-tab.active { background: var(--surface-raised); color: var(--text-primary); }
+  .doc-tab svg { width: 14px; height: 14px; }
+  .doc-header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 2px;
+  }
+  .doc-action {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .doc-action:hover { background: var(--surface-raised); color: var(--text-muted); }
+  .doc-action svg { width: 14px; height: 14px; }
+
+  .doc-meta {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .doc-meta-icon {
+    width: 32px; height: 32px;
+    background: var(--surface-raised);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .doc-meta-icon svg { width: 16px; height: 16px; }
+  .doc-meta-text { min-width: 0; }
+  .doc-meta-title { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .doc-meta-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .doc-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Document "pages" */
+  .doc-page {
+    background: var(--surface-doc);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 36px 40px 28px;
+    position: relative;
+  }
+  .doc-page-header {
+    margin-bottom: 24px;
+  }
+  .doc-page-header h2 {
+    font-family: var(--font-doc);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+  .doc-page-header h3 {
+    font-family: var(--font-doc);
+    font-size: 14px;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .doc-page-header .doc-parties {
+    font-family: var(--font-doc);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    line-height: 1.55;
+  }
+
+  .doc-clause {
+    margin-top: 20px;
+    padding: 8px 12px;
+    border-left: 2px solid transparent;
+    border-radius: 2px;
+    transition: background 0.4s, border-color 0.4s;
+  }
+  .doc-clause.highlighted {
+    background: var(--accent-bg);
+    border-left-color: var(--accent);
+  }
+  .doc-clause-head {
+    font-family: var(--font-doc);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .doc-clause-para {
+    font-family: var(--font-doc);
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-top: 4px;
+  }
+  .doc-page-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 28px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 10px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── REVIEW PANEL ── */
+  .review-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .review-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .review-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .review-header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 2px;
+  }
+
+  .review-filters {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .filter-btn {
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    border: none;
+    background: none;
+    font-family: var(--font-ui);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .filter-btn:hover { color: var(--text-primary); }
+  .filter-btn.active { background: var(--surface-raised); color: var(--text-primary); }
+  .filter-badge {
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .review-table-head {
+    display: grid;
+    grid-template-columns: 1fr 100px;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+
+  .review-scroll {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* Clause group */
+  .clause-group {
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .clause-group-header {
+    display: grid;
+    grid-template-columns: 1fr 100px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.12s;
+    align-items: center;
+  }
+  .clause-group-header:hover { background: var(--surface-raised); }
+  .clause-group-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 0;
+  }
+  .clause-group-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mandatory-badge {
+    flex-shrink: 0;
+    width: 14px; height: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mandatory-badge svg { width: 10px; height: 10px; color: var(--warning); }
+
+  .clause-status-pill {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .pill-present { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+  .pill-absent { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+
+  /* Clause items */
+  .clause-items {
+    padding: 0 20px 12px 20px;
+  }
+  .clause-item {
+    padding: 8px 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .clause-item:first-child { border-top: none; }
+
+  .clause-item-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: start;
+  }
+  .clause-item-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .clause-item-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 22px 3px 8px;
+    font-size: 11px;
+    font-family: var(--font-ui);
+    color: var(--text-secondary);
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a8a94' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    transition: border-color 0.15s;
+    white-space: nowrap;
+  }
+  .clause-item-select:hover { border-color: var(--text-dim); }
+  .clause-item-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+
+  .status-dot {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .status-dot svg { width: 12px; height: 12px; }
+
+  /* AI analysis note */
+  .ai-note {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 5px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .ai-note.note-success { background: var(--success-bg); border: 1px solid var(--success-border); }
+  .ai-note.note-warning { background: var(--warning-bg); border: 1px solid var(--warning-border); }
+  .ai-note.note-danger { background: var(--danger-bg); border: 1px solid var(--danger-border); }
+  .ai-note-icon {
+    flex-shrink: 0;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px;
+  }
+  .ai-note-icon svg { width: 14px; height: 14px; }
+  .ai-note-content { min-width: 0; }
+  .ai-note-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+  .ai-note-label.label-success { color: var(--success); }
+  .ai-note-label.label-warning { color: var(--warning); }
+  .ai-note-label.label-danger { color: var(--danger); }
+  .ai-note-text { color: var(--text-secondary); }
+
+  /* Change justification */
+  .change-form {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .change-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .change-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .change-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .change-textarea {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--ground);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 56px;
+    transition: border-color 0.15s;
+  }
+  .change-textarea::placeholder { color: var(--text-dim); }
+  .change-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .change-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .btn {
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .btn-ghost:hover { background: var(--surface-raised); color: var(--text-primary); }
+  .btn-primary {
+    background: var(--text-primary);
+    color: var(--ground);
+  }
+  .btn-primary:hover { background: #fff; }
+
+  /* Audit log entry */
+  .log-entry {
+    margin-top: 6px;
+    padding: 6px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .log-avatar {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--surface-raised);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .log-content { min-width: 0; }
+  .log-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .log-text {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.45;
+  }
+
+  /* Expand/collapse */
+  .clause-items[hidden] { display: none !important; }
+  .chevron-icon {
+    width: 14px; height: 14px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .clause-group.expanded .chevron-icon { transform: rotate(90deg); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 440px;
+    padding: 20px 24px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  }
+  .modal-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .modal-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+  .modal-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--ground);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 72px;
+    transition: border-color 0.15s;
+  }
+  .modal-textarea::placeholder { color: var(--text-dim); }
+  .modal-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .modal-actions .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ── UPLOAD SCREEN ── */
+  #uploadScreen {
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    height: 100vh;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  #uploadScreen.fade-out {
+    opacity: 0;
+    transform: scale(0.98);
+    pointer-events: none;
+  }
+  .upload-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+  }
+  .upload-content {
+    width: 100%;
+    max-width: 460px;
+    text-align: center;
+  }
+  .upload-heading {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .upload-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+  }
+  .upload-drop {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 44px 28px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .upload-drop:hover,
+  .upload-drop.dragover {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .upload-drop-icon {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 14px;
+    color: var(--text-dim);
+    transition: color 0.2s;
+  }
+  .upload-drop:hover .upload-drop-icon,
+  .upload-drop.dragover .upload-drop-icon {
+    color: var(--accent);
+  }
+  .upload-drop-icon svg { width: 100%; height: 100%; }
+  .upload-drop-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .upload-drop-hint {
+    font-size: 11.5px;
+    color: var(--text-dim);
+  }
+
+  .upload-prompt { display: block; }
+  .upload-ready { display: none; }
+  .upload-drop.has-file .upload-prompt { display: none; }
+  .upload-drop.has-file .upload-ready { display: block; }
+  .upload-drop.has-file {
+    border-style: solid;
+    border-color: var(--border);
+    cursor: default;
+    padding: 28px;
+  }
+  .upload-file-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    margin-bottom: 18px;
+  }
+  .upload-file-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+  .upload-file-icon svg { width: 18px; height: 18px; }
+  .upload-file-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .upload-file-size {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .upload-file-meta { min-width: 0; }
+  .upload-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  .btn-accent {
+    padding: 8px 20px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .btn-accent:hover { opacity: 0.88; }
+  .btn-remove {
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    transition: color 0.15s, background 0.15s;
+  }
+  .btn-remove:hover { color: var(--text-primary); background: var(--surface-raised); }
+
+  /* Progress */
+  .upload-progress-wrap {
+    display: none;
+    margin-top: 24px;
+  }
+  .upload-progress-wrap.active { display: block; }
+  .upload-progress-track {
+    width: 100%;
+    height: 4px;
+    background: var(--surface-raised);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .upload-progress-bar {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .upload-progress-bar.fill { width: 100%; }
+  .upload-status-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    min-height: 18px;
+  }
+
+  /* Workspace fade-in */
+  .app.fade-in {
+    animation: appIn 0.4s ease both;
+  }
+  @keyframes appIn {
+    from { opacity: 0; transform: scale(1.01); }
+    to { opacity: 1; transform: scale(1); }
+  }
+</style>
+
+<!-- Upload Screen -->
+<div id="uploadScreen">
+  <nav class="rail">
+    <div class="rail-icon active" title="Contratos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+    </div>
+    <div class="rail-icon" title="Fluxos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg>
+    </div>
+    <div class="rail-icon" title="Painel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    </div>
+    <div class="rail-icon" title="Relatórios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+    </div>
+    <div class="rail-icon" title="Modelos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="rail-divider"></div>
+    <div class="rail-icon" title="Configurações">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </div>
+    <div class="rail-spacer"></div>
+    <div class="rail-avatar" title="Anelise Costa">AC</div>
+  </nav>
+  <div class="upload-main">
+    <div class="upload-content">
+      <div class="upload-heading">Verificação de cláusulas</div>
+      <div class="upload-sub">Faça upload do contrato para iniciar a análise</div>
+      <div class="upload-drop" id="uploadDrop">
+        <input type="file" id="fileInput" accept=".pdf,.docx" hidden>
+        <div class="upload-prompt">
+          <div class="upload-drop-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="upload-drop-text">Arraste o arquivo aqui ou clique para selecionar</div>
+          <div class="upload-drop-hint">PDF, DOCX — máx. 25 MB</div>
+        </div>
+        <div class="upload-ready">
+          <div class="upload-file-row">
+            <div class="upload-file-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <div class="upload-file-meta">
+              <div class="upload-file-name" id="fileName"></div>
+              <div class="upload-file-size" id="fileSize"></div>
+            </div>
+          </div>
+          <div class="upload-actions">
+            <button class="btn-accent" id="btnAnalyze">Analisar contrato</button>
+            <button class="btn-remove" id="btnRemove">Remover</button>
+          </div>
+        </div>
+      </div>
+      <div class="upload-progress-wrap" id="progressWrap">
+        <div class="upload-progress-track">
+          <div class="upload-progress-bar" id="progressBar"></div>
+        </div>
+        <div class="upload-status-text" id="statusText"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app" style="display:none" id="appWorkspace">
+  <!-- Rail -->
+  <nav class="rail">
+    <div class="rail-icon active" title="Contratos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+    </div>
+    <div class="rail-icon" title="Fluxos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg>
+    </div>
+    <div class="rail-icon" title="Painel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    </div>
+    <div class="rail-icon" title="Relatórios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+    </div>
+    <div class="rail-icon" title="Modelos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="rail-divider"></div>
+    <div class="rail-icon" title="Configurações">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </div>
+    <div class="rail-spacer"></div>
+    <div class="rail-avatar" title="Anelise Costa">AC</div>
+  </nav>
+
+  <div class="workspace">
+    <!-- Document Panel -->
+    <section class="doc-panel">
+      <div class="doc-header">
+        <div class="doc-header-tabs">
+          <div class="doc-tab active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+            Contrato
+          </div>
+          <div class="doc-tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+            Aditivos
+          </div>
+        </div>
+        <div class="doc-header-actions">
+          <div class="doc-action" title="Zoom">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+          <div class="doc-action" title="Download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-meta">
+        <div class="doc-meta-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <div class="doc-meta-text">
+          <div class="doc-meta-title">Contrato</div>
+          <div class="doc-meta-sub">contrato-resseguro-2026.pdf · 3 páginas</div>
+        </div>
+      </div>
+
+      <div class="doc-scroll" id="docScroll">
+        <div class="doc-page" style="display:flex;align-items:center;justify-content:center;min-height:300px;">
+          <p class="doc-clause-para" style="text-align:center;color:var(--text-muted);">O conteúdo do contrato será exibido aqui após o upload.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Review Panel -->
+    <section class="review-panel">
+      <div class="review-header">
+        <div class="review-title">Verificação de cláusulas</div>
+        <div class="review-header-actions">
+          <div class="doc-action" title="Expandir">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-filters">
+        <button class="filter-btn active" id="filterAll">Todas</button>
+        <button class="filter-btn" id="filterPend">Pendências <span class="filter-badge">3</span></button>
+      </div>
+
+      <div class="review-table-head">
+        <div>Cláusula</div>
+        <div style="text-align:right">Status</div>
+      </div>
+
+      <div class="review-scroll" id="reviewScroll"></div>
+    </section>
+  </div>
+</div>
+
+<!-- Justification modal -->
+<div class="modal-overlay" id="justModal">
+  <div class="modal">
+    <div class="modal-title">Justificativa da alteração</div>
+    <div class="modal-subtitle" id="modalChange"></div>
+    <textarea class="modal-textarea" id="modalText" placeholder="Descreva o motivo da alteração do status." rows="3"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modalCancel">Cancelar</button>
+      <button class="btn btn-primary" id="modalSave" disabled>Salvar justificativa</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Upload screen logic ──
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  let extractedPages = [];
+  let fullText = '';
+  let uploadedFileName = '';
+
+  async function extractTextFromPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      let lastY = null;
+      let lines = [];
+      let currentLine = '';
+      content.items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        if (lastY !== null && Math.abs(y - lastY) > 2) {
+          lines.push(currentLine.trim());
+          currentLine = '';
+        }
+        currentLine += (currentLine ? ' ' : '') + item.str;
+        lastY = y;
+      });
+      if (currentLine.trim()) lines.push(currentLine.trim());
+      pages.push(lines.filter(l => l.length > 0).join('\n'));
+    }
+    return { pages, fullText: pages.join('\n\n'), numPages: pdf.numPages };
+  }
+
+  (function() {
+    const screen = document.getElementById('uploadScreen');
+    const app = document.getElementById('appWorkspace');
+    const drop = document.getElementById('uploadDrop');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameEl = document.getElementById('fileName');
+    const fileSizeEl = document.getElementById('fileSize');
+    const btnAnalyze = document.getElementById('btnAnalyze');
+    const btnRemove = document.getElementById('btnRemove');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar = document.getElementById('progressBar');
+    const statusText = document.getElementById('statusText');
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showFile(file) {
+      fileNameEl.textContent = file.name;
+      fileSizeEl.textContent = formatSize(file.size);
+      drop.classList.add('has-file');
+    }
+
+    function resetDrop() {
+      drop.classList.remove('has-file');
+      fileInput.value = '';
+      progressWrap.classList.remove('active');
+      progressBar.classList.remove('fill');
+      statusText.textContent = '';
+    }
+
+    drop.addEventListener('click', function(e) {
+      if (drop.classList.contains('has-file')) return;
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function() {
+      if (this.files.length > 0) showFile(this.files[0]);
+    });
+
+    drop.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      if (!drop.classList.contains('has-file')) drop.classList.add('dragover');
+    });
+    drop.addEventListener('dragleave', function() {
+      drop.classList.remove('dragover');
+    });
+    drop.addEventListener('drop', function(e) {
+      e.preventDefault();
+      drop.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0 && !drop.classList.contains('has-file')) {
+        showFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    btnRemove.addEventListener('click', function(e) {
+      e.stopPropagation();
+      resetDrop();
+    });
+
+    btnAnalyze.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        statusText.textContent = 'Formato não suportado. Faça upload de um arquivo PDF.';
+        statusText.style.color = 'var(--danger)';
+        return;
+      }
+
+      progressWrap.classList.add('active');
+      statusText.style.color = '';
+      statusText.textContent = 'Extraindo texto do documento...';
+      progressBar.style.transition = 'none';
+      progressBar.style.width = '0%';
+
+      try {
+        requestAnimationFrame(() => {
+          progressBar.style.transition = 'width 1.2s ease';
+          progressBar.style.width = '40%';
+        });
+
+        const result = await extractTextFromPDF(file);
+        extractedPages = result.pages;
+        fullText = result.fullText;
+        uploadedFileName = file.name;
+
+        progressBar.style.transition = 'width 0.6s ease';
+        progressBar.style.width = '70%';
+        statusText.textContent = 'Identificando cláusulas obrigatórias...';
+
+        await new Promise(r => setTimeout(r, 400));
+        progressBar.style.width = '90%';
+        statusText.textContent = 'Verificando critérios de conformidade...';
+
+        await new Promise(r => setTimeout(r, 400));
+        progressBar.style.width = '100%';
+
+        await new Promise(r => setTimeout(r, 300));
+        screen.classList.add('fade-out');
+        setTimeout(() => {
+          screen.style.display = 'none';
+          app.style.display = 'grid';
+          app.classList.add('fade-in');
+          initWorkspace();
+        }, 350);
+      } catch (err) {
+        statusText.textContent = 'Erro ao processar PDF: ' + err.message;
+        statusText.style.color = 'var(--danger)';
+        progressBar.style.width = '0%';
+      }
+    });
+  })();
+
+  // ── Criteria definitions (from checklist JSON) ──
+  const CRITERIA_DEF = [
+    {
+      title: 'Cancelamento', id: 'cancelamento',
+      criteria: [
+        { text: 'Declara os fatos geradores da rescisão e de efeito imediato, sem aviso prévio.', description: 'caso seja mencionado "mudanças na lei" ou "modificação na lei" classificar como atende', keywords: ['Cancelamento','Rescisão','Término do Contrato','Sem Aviso Prévio','Immediate Termination','cancellation','mudanças na lei','changes in the law','modificação na lei'] },
+        { text: 'Define o período de aviso prévio para cancelamento do contrato, por qualquer das partes, a qualquer tempo.', keywords: ['Cancelamento','Rescisão','Término do Contrato','Aviso Prévio','Cancelamento a Qualquer Tempo','Terminação do Contrato','cancellation'] },
+        { text: 'Deixa claro que, se os meios de comunicação estiverem interrompidos, a rescisão terá efeito a partir do momento em que tiver sido registrado o envio do aviso de rescisão.', keywords: ['cancelamento','Rescisão','Término do Contrato','Aviso de Rescisão','Comunicação Interrompida','cancellation'] },
+        { text: 'Estabelece, em caso de cancelamento, a manutenção dos direitos e obrigações contratuais de ambas as partes conforme a base de contratação celebrada.', keywords: ['cancelamento','Rescisão','Término do Contrato','Direitos Contratuais','Obrigações Contratuais','Termination','Contractual Rights','Contractual Obligations','Rescission','cancellation'] }
+      ]
+    },
+    {
+      title: 'Insolvência', id: 'insolvencia',
+      criteria: [
+        { text: 'Deixa claro que o ressegurador é responsável perante a massa liquidanda, ou seja, não responde diretamente ao segurado.', keywords: ['Insolvência','Massa Liquidanda','Responsabilidade','Ressegurador','Segurado','Liquidating Estate','Indirect Liability'] },
+        { text: 'Estabelece que as despesas com as providências adotadas pelo ressegurador são devidas pela ressegurada insolvente, na proporção de sua retenção.', keywords: ['Insolvência','Despesas','Retenção','Ressegurada','Responsabilidade Financeira','Insolvency','Expenses','Retention','Financial Responsibility'] },
+        { text: 'Indica que o ressegurador poderá investigar cada reclamação de sinistro durante o processo de insolvência.', keywords: ['Insolvência','Reclamação de Sinistro','Investigação','Ressegurador','Claims Investigation','Insolvency Process'] },
+        { text: 'Prevê a notificação do ressegurador sobre qualquer sinistro pendente durante o processo de insolvência.', description: 'se houver menção sobre qualquer sinistro pendente durante o processo de insolvência, não deve atender', keywords: ['Notificação','Sinistro Pendente','Insolvência','Ressegurador','Pending Claims','Insolvency Notification'] }
+      ]
+    },
+    {
+      title: 'Intermediação', id: 'intermediacao',
+      criteria: [
+        { text: 'Caso seja outorgado ao Corretor o repasse de prêmios e sinistros, estabelece que a existência de um intermediário não impede o contato direto entre a ressegurada e o ressegurador.', keywords: ['Intermediação','Corretor','Prêmios','Sinistros','Contato Direto','Intermediation','Broker','Premiums','Claims','Direct Contact'] },
+        { text: 'Define que as remessas feitas pela ressegurada ao broker são consideradas pagas ao ressegurador, enquanto os pagamentos do ressegurador são considerados liquidados quando recebidos pela ressegurada.', keywords: ['Intermediação','Broker','Pagamentos','Ressegurador','Ressegurada','Payment Handling','Intermediary Settlements'] },
+        { text: 'Quando houver possibilidade de o corretor transacionar valores (prêmios e sinistros), estabelecer um prazo para tais repasses.', keywords: ['corretor','transação','prêmios','sinistros','prazo','repasses'] }
+      ]
+    },
+    {
+      title: 'Legislação e foro', id: 'legislacao',
+      criteria: [
+        { text: 'Determina por qual lei e jurisdição será regido o contrato.', keywords: ['Lei Aplicável','Applicable Law'] }
+      ]
+    },
+    {
+      title: 'Prevenção e combate à lavagem de dinheiro', id: 'lavagem',
+      criteria: [
+        { text: 'Confere à ressegurada a responsabilidade de manter uma estrutura de governança específica de controles internos contra os crimes de lavagem ou ocultação de bens, direitos e valores.', keywords: ['Governança','Controles Internos','Lavagem de Dinheiro','Compliance','Anti-Money Laundering','Internal Controls','Governance'] }
+      ]
+    },
+    {
+      title: 'Proteção de dados', id: 'protecao-dados',
+      criteria: [
+        { text: 'Especifica que a finalidade do tratamento se relaciona exclusivamente ao objeto do contrato?', keywords: [], fallbackTerms: ['proteção de dados','tratamento de dados','finalidade do tratamento','objeto do contrato'] },
+        { text: 'Estabelece obrigações para as partes em relação ao cumprimento da LGPD?', keywords: [], fallbackTerms: ['LGPD','Lei Geral de Proteção','obrigações','cumprimento'] },
+        { text: 'Identifica as partes como controladores e/ou operadores?', keywords: [], fallbackTerms: ['controlador','operador','dados pessoais','controladores','operadores'] },
+        { text: 'Indica a Lei 13.709/2018 (LGPD) como base legal?', keywords: [], fallbackTerms: ['Lei 13.709','LGPD','13709','proteção de dados'] },
+        { text: 'Menciona a existência de políticas organizacionais e técnicas que garantam a segurança e a governança dos dados, além da prevenção de acidentes?', keywords: [], fallbackTerms: ['segurança dos dados','governança dos dados','políticas organizacionais','prevenção de incidentes'] },
+        { text: 'Prevê a comunicação imediata em caso de violação ou risco à segurança dos dados?', keywords: [], fallbackTerms: ['violação de dados','risco à segurança','comunicação imediata','incidente de dados'] },
+        { text: 'Prevê a comunicação para pedidos de correção, exclusão e portabilidade dos dados?', keywords: [], fallbackTerms: ['correção de dados','exclusão de dados','portabilidade','direitos do titular'] }
+      ]
+    },
+    {
+      title: 'Riscos cobertos', id: 'riscos-cobertos',
+      criteria: [
+        { text: 'Estabelece os ramos e linhas de negócio cobertos do contrato de resseguro.', description: 'Deve haver menções explícitas sobre "riscos cobertos". Não verificar trechos que mencionam "Escopo da Cobertura", "Limites do contrato", "Limites territoriais", "Exclusões" ou "fiança locatícia".', keywords: [], fallbackTerms: ['riscos cobertos','ramos','linhas de negócio','cobertura'], excludeTerms: ['Escopo da Cobertura','Limites do contrato','Limites territoriais','Exclusões','fiança locatícia'] }
+      ]
+    },
+    {
+      title: 'Riscos excluídos', id: 'riscos-excluidos',
+      criteria: [
+        { text: 'Estabelece os riscos excluídos pelo contrato de resseguro (exemplo: linhas de negócio, ramos, coberturas, atividades, cláusulas de exclusão).', keywords: ['covered risks','excluded risks','insurance lines','reinsurance contract','risk coverage','riscos cobertos','riscos excluídos','linhas de negócio','contrato de resseguro','cobertura de riscos'] }
+      ]
+    },
+    {
+      title: 'Vigência', id: 'vigencia',
+      criteria: [
+        { text: 'Define a base de contratação do resseguro (por exemplo, Riscos Iniciados ou Sinistros Ocorridos).', description: 'Caso haja menções sobre estende a sinistros ocorridos, deve classificar como atender', keywords: ['Vigência do contrato','horas','Horário','Início','Fim','Brasília','Riscos Iniciados','Vigor','Vigência','Horário Oficial Local','Horário Oficial de Brasília','Local Standard Time','Período de Cobertura','Base de Contratação','Sinistros Ocorridos','Coverage Period','Contract Basis','Claims-Made','Occurrence-Based','Resseguro'] },
+        { text: 'Deixa claro se tratar do horário oficial local (por exemplo: horário oficial de Brasília; local standard time).', keywords: ['Vigência do contrato','horas','Horário','Início','Fim','Brasília','Riscos Iniciados','Vigor','Vigência','Horário Oficial Local','Horário Oficial de Brasília','Local Standard Time','Período de Cobertura','Base de Contratação','Sinistros Ocorridos','Coverage Period','Contract Basis','Claims-Made','Occurrence-Based','Resseguro'] }
+      ]
+    }
+  ];
+
+  // ── Analysis engine ──
+  function findKeywordMatches(text, keywords) {
+    const lower = text.toLowerCase();
+    const matched = [];
+    const contexts = [];
+    keywords.forEach(kw => {
+      const idx = lower.indexOf(kw.toLowerCase());
+      if (idx !== -1) {
+        matched.push(kw);
+        const start = Math.max(0, idx - 60);
+        const end = Math.min(text.length, idx + kw.length + 60);
+        contexts.push('...' + text.substring(start, end).trim() + '...');
+      }
+    });
+    return { matched, contexts };
+  }
+
+  function analyzeContract(text) {
+    const lower = text.toLowerCase();
+    return CRITERIA_DEF.map(group => {
+      const items = group.criteria.map(criterion => {
+        let searchTerms = criterion.keywords.length > 0 ? criterion.keywords : (criterion.fallbackTerms || []);
+        let { matched, contexts } = findKeywordMatches(text, searchTerms);
+
+        // Apply exclude terms (Riscos cobertos)
+        if (criterion.excludeTerms) {
+          const hasExcluded = criterion.excludeTerms.some(t => lower.includes(t.toLowerCase()));
+          const hasRiscosCobertos = lower.includes('riscos cobertos');
+          if (!hasRiscosCobertos && hasExcluded) {
+            matched = [];
+            contexts = [];
+          }
+        }
+
+        // Special description rules
+        let status;
+        let forceStatus = null;
+
+        if (criterion.description) {
+          const desc = criterion.description.toLowerCase();
+          // INSOLVÊNCIA item 4: "sinistro pendente" → Não atende
+          if (desc.includes('não deve atender') && desc.includes('sinistro pendente')) {
+            if (lower.includes('sinistro pendente')) {
+              forceStatus = 'Não atende';
+            }
+          }
+          // CANCELAMENTO item 1: "mudanças na lei" → Atende
+          if (desc.includes('mudanças na lei') || desc.includes('modificação na lei')) {
+            if (lower.includes('mudanças na lei') || lower.includes('modificação na lei') || lower.includes('mudancas na lei')) {
+              forceStatus = 'Atende';
+            }
+          }
+          // VIGÊNCIA item 1: "sinistros ocorridos" → Atende
+          if (desc.includes('sinistros ocorridos') && desc.includes('atender')) {
+            if (lower.includes('sinistros ocorridos')) {
+              forceStatus = 'Atende';
+            }
+          }
+          // RISCOS COBERTOS: explicit "riscos cobertos" required
+          if (desc.includes('riscos cobertos') && desc.includes('menções explícitas')) {
+            if (lower.includes('riscos cobertos')) {
+              forceStatus = 'Atende';
+            } else if (matched.length > 0) {
+              forceStatus = 'Atende parcialmente';
+            }
+          }
+        }
+
+        if (forceStatus) {
+          status = forceStatus;
+        } else if (matched.length >= 2) {
+          status = 'Atende';
+        } else if (matched.length === 1) {
+          status = 'Atende parcialmente';
+        } else {
+          status = 'Não atende';
+        }
+
+        const note = generateNote(criterion, matched, searchTerms, contexts, status);
+        return { text: criterion.text, status, note };
+      });
+
+      const hasAny = items.some(i => i.status === 'Atende' || i.status === 'Atende parcialmente');
+      return {
+        title: group.title,
+        id: group.id,
+        status: hasAny ? 'Presente' : 'Ausente',
+        docClause: null,
+        items
+      };
+    });
+  }
+
+  function generateNote(criterion, matched, allTerms, contexts, status) {
+    if (status === 'Atende') {
+      const kws = matched.slice(0, 3).map(k => '"' + k + '"').join(', ');
+      const ctx = contexts.length > 0 ? ' Trecho: ' + contexts[0].substring(0, 120) : '';
+      return 'Foram encontradas menções a ' + kws + ' no documento.' + ctx;
+    }
+    if (status === 'Atende parcialmente') {
+      const found = matched.map(k => '"' + k + '"').join(', ');
+      const missing = allTerms.filter(t => !matched.includes(t)).slice(0, 3).map(k => '"' + k + '"').join(', ');
+      return 'Encontrada menção parcial a ' + found + ', porém os demais termos esperados (' + missing + ') não foram identificados.';
+    }
+    const expected = allTerms.slice(0, 4).map(k => '"' + k + '"').join(', ');
+    if (expected) {
+      return 'Não foram encontradas menções a ' + expected + ' no documento.';
+    }
+    return 'Não foram encontrados termos relacionados a este critério no documento.';
+  }
+
+  // ── Render document ──
+  function renderDocument(pages, fileName) {
+    const docScroll = document.getElementById('docScroll');
+    docScroll.innerHTML = '';
+    const baseName = fileName.replace(/\.pdf$/i, '');
+    document.querySelector('.doc-meta-title').textContent = baseName;
+    document.querySelector('.doc-meta-sub').textContent = fileName + ' · ' + pages.length + ' página' + (pages.length !== 1 ? 's' : '');
+
+    pages.forEach((pageText, i) => {
+      const pageDiv = document.createElement('div');
+      pageDiv.className = 'doc-page';
+
+      let paragraphs = pageText.split(/\n/).filter(p => p.trim().length > 0);
+      if (paragraphs.length <= 1 && pageText.trim().length > 0) {
+        const bySentence = pageText.trim().match(/.{1,500}(?:\.\s|$)/g);
+        if (bySentence && bySentence.length > 1) {
+          paragraphs = bySentence.filter(p => p.trim().length > 0);
+        } else {
+          paragraphs = [pageText.trim()];
+        }
+      }
+      paragraphs.forEach(p => {
+        const para = document.createElement('p');
+        para.className = 'doc-clause-para';
+        para.textContent = p.trim();
+        pageDiv.appendChild(para);
+      });
+
+      const footer = document.createElement('div');
+      footer.className = 'doc-page-footer';
+      footer.innerHTML = '<span>' + esc(baseName) + ' · Confidencial</span><span>Página ' + (i + 1) + ' de ' + pages.length + '</span>';
+      pageDiv.appendChild(footer);
+
+      docScroll.appendChild(pageDiv);
+    });
+  }
+
+  let CHECKLIST = [];
+
+  // ── Status icon definitions ──
+  const icons = {
+    'Atende': { color: 'var(--success)', svg: '<path d="M20 6L9 17l-5-5"/>' },
+    'Atende parcialmente': { color: 'var(--warning)', svg: '<path d="M12 9v4"/><path d="M12 17h.01"/>' },
+    'Não atende': { color: 'var(--danger)', svg: '<path d="M18 6L6 18"/><path d="M6 6l12 12"/>' }
+  };
+
+  const noteClass = { 'Atende': 'note-success', 'Atende parcialmente': 'note-warning', 'Não atende': 'note-danger' };
+  const labelClass = { 'Atende': 'label-success', 'Atende parcialmente': 'label-warning', 'Não atende': 'label-danger' };
+
+  function iconSvg(status, sw) {
+    const i = icons[status] || icons['Atende'];
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="' + i.color + '" stroke-width="' + (sw || '2.5') + '" stroke-linecap="round" stroke-linejoin="round">' + i.svg + '</svg>';
+  }
+
+  function noteIconSvg(status) {
+    const i = icons[status] || icons['Atende'];
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="' + i.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+  }
+
+  function esc(s) { return s.replace(/</g, '&lt;'); }
+
+  // ── Render checklist ──
+  function renderChecklist() {
+    const container = document.getElementById('reviewScroll');
+    container.innerHTML = '';
+
+    CHECKLIST.forEach(group => {
+      const gId = 'cg-' + group.id;
+      const iId = 'ci-' + group.id;
+      const pillClass = group.status === 'Presente' ? 'pill-present' : 'pill-absent';
+      const isFirst = CHECKLIST.indexOf(group) < 3;
+
+      let itemsHtml = '';
+      group.items.forEach(item => {
+        const selOpts = ['Atende', 'Atende parcialmente', 'Não atende'].map(o =>
+          '<option' + (o === item.status ? ' selected' : '') + '>' + o + '</option>'
+        ).join('');
+
+        let logsHtml = '';
+        if (item.logs) {
+          item.logs.forEach(log => {
+            logsHtml += '<div class="log-entry"><div class="log-avatar">' + esc(log.initials) + '</div><div class="log-content"><div class="log-meta">' + esc(log.name) + ' · ' + esc(log.from) + ' → ' + esc(log.to) + ' · ' + esc(log.date) + '</div><div class="log-text">' + esc(log.text) + '</div></div></div>';
+          });
+        }
+
+        itemsHtml += '<div class="clause-item"><div class="clause-item-row"><div class="clause-item-text">' + esc(item.text) + '</div><select class="clause-item-select">' + selOpts + '</select><div class="status-dot">' + iconSvg(item.status) + '</div></div><div class="ai-note ' + noteClass[item.status] + '"><div class="ai-note-icon">' + noteIconSvg(item.status) + '</div><div class="ai-note-content"><div class="ai-note-label ' + labelClass[item.status] + '">Análise automática</div><div class="ai-note-text">' + esc(item.note) + '</div></div></div>' + logsHtml + '</div>';
+      });
+
+      const groupHtml = '<div class="clause-group' + (isFirst ? ' expanded' : '') + '" id="' + gId + '"><div class="clause-group-header" onclick="toggleClause(\'' + gId + '\',\'' + iId + '\'' + (group.docClause ? ',\'' + group.docClause + '\'' : ',null') + ')"><div class="clause-group-title"><svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>' + esc(group.title) + '</span><div class="mandatory-badge" title="Obrigatória"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div></div><div style="text-align:right"><span class="clause-status-pill ' + pillClass + '">' + group.status + '</span></div></div><div class="clause-items" id="' + iId + '"' + (isFirst ? '' : ' hidden') + '>' + itemsHtml + '</div></div>';
+
+      container.insertAdjacentHTML('beforeend', groupHtml);
+    });
+  }
+
+  function initWorkspace() {
+    renderDocument(extractedPages, uploadedFileName);
+    CHECKLIST = analyzeContract(fullText);
+    renderChecklist();
+    updatePendingCount();
+    initFilters();
+    initModal();
+  }
+
+  // ── Expand / collapse ──
+  function toggleClause(groupId, itemsId, docClauseId) {
+    const group = document.getElementById(groupId);
+    const items = document.getElementById(itemsId);
+    if (!group || !items) return;
+    const isOpen = group.classList.contains('expanded');
+    if (isOpen) {
+      group.classList.remove('expanded');
+      items.hidden = true;
+    } else {
+      group.classList.add('expanded');
+      items.hidden = false;
+      if (docClauseId) {
+        const el = document.getElementById(docClauseId);
+        if (el) {
+          el.classList.add('highlighted');
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => el.classList.remove('highlighted'), 2400);
+        }
+      }
+    }
+  }
+
+  // ── Filter ──
+  function applyFilter(mode) {
+    document.getElementById('filterAll').classList.toggle('active', mode === 'all');
+    document.getElementById('filterPend').classList.toggle('active', mode === 'pend');
+
+    document.querySelectorAll('.clause-group').forEach(group => {
+      const items = group.querySelectorAll('.clause-item');
+      let visibleCount = 0;
+      items.forEach(item => {
+        const select = item.querySelector('.clause-item-select');
+        if (!select) return;
+        const isPending = select.value === 'Não atende' || select.value === 'Atende parcialmente';
+        if (mode === 'pend' && !isPending) {
+          item.style.display = 'none';
+        } else {
+          item.style.display = '';
+          visibleCount++;
+        }
+      });
+      if (mode === 'pend') {
+        group.style.display = visibleCount === 0 ? 'none' : '';
+        if (visibleCount > 0) {
+          group.classList.add('expanded');
+          const ci = group.querySelector('.clause-items');
+          if (ci) ci.hidden = false;
+        }
+      } else {
+        group.style.display = '';
+      }
+    });
+  }
+
+  function initFilters() {
+    document.getElementById('filterAll').addEventListener('click', () => applyFilter('all'));
+    document.getElementById('filterPend').addEventListener('click', () => applyFilter('pend'));
+  }
+
+  // ── Status helpers ──
+  function updateStatusDot(item, status) {
+    const dot = item.querySelector('.status-dot');
+    if (!dot) return;
+    dot.innerHTML = iconSvg(status);
+  }
+
+  function updatePendingCount() {
+    let count = 0;
+    document.querySelectorAll('.clause-item-select').forEach(s => {
+      if (s.value !== 'Atende') count++;
+    });
+    document.querySelector('.filter-badge').textContent = count;
+  }
+
+  // ── Modal logic ──
+  function initModal() {
+    const overlay = document.getElementById('justModal');
+    const modalChange = document.getElementById('modalChange');
+    const modalText = document.getElementById('modalText');
+    const modalSave = document.getElementById('modalSave');
+    const modalCancel = document.getElementById('modalCancel');
+    let activeSelect = null;
+    let prevValue = '';
+
+    document.querySelectorAll('.clause-item-select').forEach(sel => {
+      sel.dataset.prev = sel.value;
+    });
+
+    document.getElementById('reviewScroll').addEventListener('change', function(e) {
+      if (!e.target.classList.contains('clause-item-select')) return;
+      const sel = e.target;
+      const oldVal = sel.dataset.prev;
+      const newVal = sel.value;
+      if (oldVal === newVal) return;
+      activeSelect = sel;
+      prevValue = oldVal;
+      modalChange.textContent = oldVal + ' → ' + newVal;
+      modalText.value = '';
+      modalSave.disabled = true;
+      overlay.classList.add('open');
+      setTimeout(() => modalText.focus(), 50);
+    });
+
+    modalText.addEventListener('input', () => {
+      modalSave.disabled = !modalText.value.trim();
+    });
+
+    modalCancel.addEventListener('click', () => {
+      if (activeSelect) {
+        activeSelect.value = prevValue;
+        activeSelect = null;
+      }
+      overlay.classList.remove('open');
+      modalText.value = '';
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) modalCancel.click();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.classList.contains('open')) modalCancel.click();
+    });
+
+    modalSave.addEventListener('click', () => {
+      if (!activeSelect || !modalText.value.trim()) return;
+      const newVal = activeSelect.value;
+      const text = modalText.value.trim();
+      const item = activeSelect.closest('.clause-item');
+
+      activeSelect.dataset.prev = newVal;
+      updateStatusDot(item, newVal);
+
+      const now = new Date();
+      const date = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = '<div class="log-avatar">AC</div><div class="log-content"><div class="log-meta">Anelise Costa · ' + prevValue + ' → ' + newVal + ' · ' + date + '</div><div class="log-text">' + esc(text) + '</div></div>';
+      item.appendChild(entry);
+
+      updatePendingCount();
+      activeSelect = null;
+      overlay.classList.remove('open');
+      modalText.value = '';
+    });
+  }
+</script>
