@@ -379,6 +379,7 @@
     white-space: nowrap;
   }
   .pill-present { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+  .pill-partial { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
   .pill-absent { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
 
   /* Clause items */
@@ -467,6 +468,64 @@
   .ai-note-label.label-danger { color: var(--danger); }
   .ai-note-text { color: var(--text-secondary); }
 
+  /* Location badge */
+  .loc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    padding: 1px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-left: 6px;
+    vertical-align: middle;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .loc-badge:hover { background: rgba(104, 134, 197, 0.18); border-color: var(--accent); }
+  .loc-badge svg { width: 10px; height: 10px; flex-shrink: 0; }
+
+  /* Evidence block */
+  .evidence-block {
+    margin-top: 5px;
+    padding: 5px 8px;
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid var(--border);
+    border-radius: 0 3px 3px 0;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .evidence-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    margin-right: 4px;
+  }
+  .evidence-text {
+    color: var(--text-muted);
+    font-family: var(--font-doc);
+    font-style: italic;
+  }
+
+  /* Highlighted page on scroll-to */
+  .doc-page.highlighted {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    animation: page-pulse 0.6s ease;
+  }
+  @keyframes page-pulse {
+    0% { outline-color: transparent; }
+    30% { outline-color: var(--accent); }
+    100% { outline-color: var(--accent); }
+  }
+
   /* Change justification */
   .change-form {
     margin-top: 8px;
@@ -534,35 +593,71 @@
   }
   .btn-primary:hover { background: #fff; }
 
-  /* Audit log entry */
+  /* Audit log section */
+  .log-section {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+  .log-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+    padding: 0 10px;
+  }
+  .log-section-title svg {
+    width: 12px; height: 12px;
+    flex-shrink: 0;
+  }
   .log-entry {
-    margin-top: 6px;
+    margin-top: 4px;
     padding: 6px 10px;
     display: flex;
     gap: 8px;
     align-items: flex-start;
+    border-radius: 6px;
+    background: var(--surface-raised);
   }
   .log-avatar {
     width: 22px; height: 22px;
     border-radius: 50%;
-    background: var(--surface-raised);
+    background: var(--accent);
     display: flex; align-items: center; justify-content: center;
     font-size: 9px;
     font-weight: 600;
-    color: var(--text-muted);
+    color: #fff;
     flex-shrink: 0;
     margin-top: 1px;
   }
   .log-content { min-width: 0; }
   .log-meta {
     font-size: 11px;
+    color: var(--text-muted);
+  }
+  .log-change {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 3px;
+    font-size: 11px;
     color: var(--text-dim);
+  }
+  .log-from {
+    text-decoration: line-through;
+    opacity: .6;
   }
   .log-text {
     font-size: 11.5px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: 4px;
     line-height: 1.45;
+    font-style: italic;
   }
 
   /* Expand/collapse */
@@ -1137,188 +1232,192 @@
     });
   })();
 
-  // ── Criteria definitions (from checklist JSON) ──
+  // ── Criteria definitions — Doméstico Proporcional (only Proteção de Dados + Vigência) ──
   const CRITERIA_DEF = [
     {
-      title: 'Cancelamento', id: 'cancelamento',
+      title: 'Proteção de dados', id: 'protecao-dados', mandatory: true,
       criteria: [
-        { text: 'Declara os fatos geradores da rescisão e de efeito imediato, sem aviso prévio.', description: 'caso seja mencionado "mudanças na lei" ou "modificação na lei" classificar como atende', keywords: ['Cancelamento','Rescisão','Término do Contrato','Sem Aviso Prévio','Immediate Termination','cancellation','mudanças na lei','changes in the law','modificação na lei'] },
-        { text: 'Define o período de aviso prévio para cancelamento do contrato, por qualquer das partes, a qualquer tempo.', keywords: ['Cancelamento','Rescisão','Término do Contrato','Aviso Prévio','Cancelamento a Qualquer Tempo','Terminação do Contrato','cancellation'] },
-        { text: 'Deixa claro que, se os meios de comunicação estiverem interrompidos, a rescisão terá efeito a partir do momento em que tiver sido registrado o envio do aviso de rescisão.', keywords: ['cancelamento','Rescisão','Término do Contrato','Aviso de Rescisão','Comunicação Interrompida','cancellation'] },
-        { text: 'Estabelece, em caso de cancelamento, a manutenção dos direitos e obrigações contratuais de ambas as partes conforme a base de contratação celebrada.', keywords: ['cancelamento','Rescisão','Término do Contrato','Direitos Contratuais','Obrigações Contratuais','Termination','Contractual Rights','Contractual Obligations','Rescission','cancellation'] }
+        {
+          text: 'Especifica que a finalidade do tratamento se relaciona exclusivamente ao objeto do contrato?',
+          question: 'O contrato vincula o tratamento dos dados ao objeto ou à execução do contrato?',
+          positiveIndicators: ['tratamento de dados','tratamento dos dados','finalidade do tratamento','objeto do contrato','execução do contrato','execução deste contrato','fins de execução','dados pessoais','finalidade exclusiva'],
+          negativeIndicators: ['finalidades legítimas'],
+          simRule: 'Há texto ligando o uso dos dados ao objeto contratado (ex.: "para fins de execução deste contrato"). Menção genérica a "finalidades legítimas" = não.'
+        },
+        {
+          text: 'Estabelece obrigações para as partes em relação ao cumprimento da LGPD?',
+          question: 'O contrato obriga a contratante a cumprir a legislação de proteção de dados?',
+          positiveIndicators: ['LGPD','proteção de dados','Lei Geral de Proteção','cumprimento da legislação','cumprir a legislação','obrigações de proteção de dados','legislação de proteção de dados'],
+          negativeIndicators: [],
+          simRule: 'O dever recai sobre a contratante, nominalmente ou via "as partes", "cada parte" ou "ambas". "Cumprir a legislação aplicável" sem referência a proteção de dados = não.'
+        },
+        {
+          text: 'Identifica as partes como controladores e/ou operadores?',
+          question: 'O contrato atribui papel de agente de tratamento à contratante?',
+          positiveIndicators: ['controlador','operador','controladora','operadora','agente de tratamento','controller','processor','data controller','data processor','cocontrolador','cocontroladora'],
+          negativeIndicators: [],
+          simRule: 'A contratante é qualificada expressamente como controladora/operadora. Não inferir pelo contexto.'
+        },
+        {
+          text: 'Indica a Lei 13.709/2018 (LGPD) como base legal?',
+          question: 'O contrato cita expressamente a LGPD?',
+          positiveIndicators: ['13.709','13709','LGPD','Lei Geral de Proteção de Dados','Lei nº 13.709'],
+          negativeIndicators: [],
+          simRule: 'Cita "Lei nº 13.709/2018" ou "LGPD". "Legislação de proteção" genérica sem citar a lei = não.'
+        },
+        {
+          text: 'Menciona a existência de políticas organizacionais e técnicas que garantam a segurança e a governança dos dados?',
+          question: 'Menciona medidas técnicas de segurança?',
+          positiveIndicators: ['medidas técnicas','criptografia','backup','pseudonimização','segurança da informação','medidas de segurança','security measures','técnicas de segurança','governança dos dados','políticas de segurança','medidas organizacionais'],
+          negativeIndicators: [],
+          simRule: 'Usa "medidas técnicas" ou cita especificamente (criptografia, backup, pseudonimização, etc.).'
+        },
+        {
+          text: 'Prevê a comunicação imediata em caso de violação ou risco à segurança dos dados?',
+          question: 'Prevê comunicação à outra parte em caso de violação ou incidente de dados?',
+          positiveIndicators: ['violação','incidente','vazamento','breach','violação de dados','incidente de dados','data breach','incidente de segurança','comunicação imediata'],
+          negativeIndicators: [],
+          simRule: 'Há obrigação de avisar a outra parte em caso de violação/vazamento de dados.'
+        },
+        {
+          text: 'Prevê a comunicação para pedidos de correção, exclusão e portabilidade dos dados?',
+          question: 'Prevê comunicação à outra parte sobre pedidos de correção, exclusão e portabilidade de dados?',
+          positiveIndicators: ['correção','retificação','exclusão','portabilidade','titular','direitos do titular','correction','deletion','portability','data subject','exclusão de dados','correção de dados'],
+          negativeIndicators: [],
+          simRule: 'Menciona correção, retificação, exclusão ou portabilidade de dados do titular.'
+        }
       ]
     },
     {
-      title: 'Insolvência', id: 'insolvencia',
+      title: 'Vigência', id: 'vigencia', mandatory: true,
       criteria: [
-        { text: 'Deixa claro que o ressegurador é responsável perante a massa liquidanda, ou seja, não responde diretamente ao segurado.', keywords: ['Insolvência','Massa Liquidanda','Responsabilidade','Ressegurador','Segurado','Liquidating Estate','Indirect Liability'] },
-        { text: 'Estabelece que as despesas com as providências adotadas pelo ressegurador são devidas pela ressegurada insolvente, na proporção de sua retenção.', keywords: ['Insolvência','Despesas','Retenção','Ressegurada','Responsabilidade Financeira','Insolvency','Expenses','Retention','Financial Responsibility'] },
-        { text: 'Indica que o ressegurador poderá investigar cada reclamação de sinistro durante o processo de insolvência.', keywords: ['Insolvência','Reclamação de Sinistro','Investigação','Ressegurador','Claims Investigation','Insolvency Process'] },
-        { text: 'Prevê a notificação do ressegurador sobre qualquer sinistro pendente durante o processo de insolvência.', description: 'se houver menção sobre qualquer sinistro pendente durante o processo de insolvência, não deve atender', keywords: ['Notificação','Sinistro Pendente','Insolvência','Ressegurador','Pending Claims','Insolvency Notification'] }
-      ]
-    },
-    {
-      title: 'Intermediação', id: 'intermediacao',
-      criteria: [
-        { text: 'Caso seja outorgado ao Corretor o repasse de prêmios e sinistros, estabelece que a existência de um intermediário não impede o contato direto entre a ressegurada e o ressegurador.', keywords: ['Intermediação','Corretor','Prêmios','Sinistros','Contato Direto','Intermediation','Broker','Premiums','Claims','Direct Contact'] },
-        { text: 'Define que as remessas feitas pela ressegurada ao broker são consideradas pagas ao ressegurador, enquanto os pagamentos do ressegurador são considerados liquidados quando recebidos pela ressegurada.', keywords: ['Intermediação','Broker','Pagamentos','Ressegurador','Ressegurada','Payment Handling','Intermediary Settlements'] },
-        { text: 'Quando houver possibilidade de o corretor transacionar valores (prêmios e sinistros), estabelecer um prazo para tais repasses.', keywords: ['corretor','transação','prêmios','sinistros','prazo','repasses'] }
-      ]
-    },
-    {
-      title: 'Legislação e foro', id: 'legislacao',
-      criteria: [
-        { text: 'Determina por qual lei e jurisdição será regido o contrato.', keywords: ['Lei Aplicável','Applicable Law'] }
-      ]
-    },
-    {
-      title: 'Prevenção e combate à lavagem de dinheiro', id: 'lavagem',
-      criteria: [
-        { text: 'Confere à ressegurada a responsabilidade de manter uma estrutura de governança específica de controles internos contra os crimes de lavagem ou ocultação de bens, direitos e valores.', keywords: ['Governança','Controles Internos','Lavagem de Dinheiro','Compliance','Anti-Money Laundering','Internal Controls','Governance'] }
-      ]
-    },
-    {
-      title: 'Proteção de dados', id: 'protecao-dados',
-      criteria: [
-        { text: 'Especifica que a finalidade do tratamento se relaciona exclusivamente ao objeto do contrato?', keywords: [], fallbackTerms: ['proteção de dados','tratamento de dados','finalidade do tratamento','objeto do contrato'] },
-        { text: 'Estabelece obrigações para as partes em relação ao cumprimento da LGPD?', keywords: [], fallbackTerms: ['LGPD','Lei Geral de Proteção','obrigações','cumprimento'] },
-        { text: 'Identifica as partes como controladores e/ou operadores?', keywords: [], fallbackTerms: ['controlador','operador','dados pessoais','controladores','operadores'] },
-        { text: 'Indica a Lei 13.709/2018 (LGPD) como base legal?', keywords: [], fallbackTerms: ['Lei 13.709','LGPD','13709','proteção de dados'] },
-        { text: 'Menciona a existência de políticas organizacionais e técnicas que garantam a segurança e a governança dos dados, além da prevenção de acidentes?', keywords: [], fallbackTerms: ['segurança dos dados','governança dos dados','políticas organizacionais','prevenção de incidentes'] },
-        { text: 'Prevê a comunicação imediata em caso de violação ou risco à segurança dos dados?', keywords: [], fallbackTerms: ['violação de dados','risco à segurança','comunicação imediata','incidente de dados'] },
-        { text: 'Prevê a comunicação para pedidos de correção, exclusão e portabilidade dos dados?', keywords: [], fallbackTerms: ['correção de dados','exclusão de dados','portabilidade','direitos do titular'] }
-      ]
-    },
-    {
-      title: 'Riscos cobertos', id: 'riscos-cobertos',
-      criteria: [
-        { text: 'Estabelece os ramos e linhas de negócio cobertos do contrato de resseguro.', description: 'Deve haver menções explícitas sobre "riscos cobertos". Não verificar trechos que mencionam "Escopo da Cobertura", "Limites do contrato", "Limites territoriais", "Exclusões" ou "fiança locatícia".', keywords: [], fallbackTerms: ['riscos cobertos','ramos','linhas de negócio','cobertura'], excludeTerms: ['Escopo da Cobertura','Limites do contrato','Limites territoriais','Exclusões','fiança locatícia'] }
-      ]
-    },
-    {
-      title: 'Riscos excluídos', id: 'riscos-excluidos',
-      criteria: [
-        { text: 'Estabelece os riscos excluídos pelo contrato de resseguro (exemplo: linhas de negócio, ramos, coberturas, atividades, cláusulas de exclusão).', keywords: ['covered risks','excluded risks','insurance lines','reinsurance contract','risk coverage','riscos cobertos','riscos excluídos','linhas de negócio','contrato de resseguro','cobertura de riscos'] }
-      ]
-    },
-    {
-      title: 'Vigência', id: 'vigencia',
-      criteria: [
-        { text: 'Define a base de contratação do resseguro (por exemplo, Riscos Iniciados ou Sinistros Ocorridos).', description: 'Caso haja menções sobre estende a sinistros ocorridos, deve classificar como atender', keywords: ['Vigência do contrato','horas','Horário','Início','Fim','Brasília','Riscos Iniciados','Vigor','Vigência','Horário Oficial Local','Horário Oficial de Brasília','Local Standard Time','Período de Cobertura','Base de Contratação','Sinistros Ocorridos','Coverage Period','Contract Basis','Claims-Made','Occurrence-Based','Resseguro'] },
-        { text: 'Deixa claro se tratar do horário oficial local (por exemplo: horário oficial de Brasília; local standard time).', keywords: ['Vigência do contrato','horas','Horário','Início','Fim','Brasília','Riscos Iniciados','Vigor','Vigência','Horário Oficial Local','Horário Oficial de Brasília','Local Standard Time','Período de Cobertura','Base de Contratação','Sinistros Ocorridos','Coverage Period','Contract Basis','Claims-Made','Occurrence-Based','Resseguro'] }
+        {
+          text: 'Define a base de contratação do resseguro (por exemplo, Riscos Iniciados ou Sinistros Ocorridos).',
+          question: 'O contrato define expressamente a base de contratação?',
+          positiveIndicators: ['Riscos Iniciados','Sinistros Ocorridos','risks attaching','losses occurring','Base de Contratação','Contract Basis','Claims-Made','Occurrence-Based','base de contratação','contrato contínuo'],
+          negativeIndicators: [],
+          keywords: ['Vigência do contrato','horas','Horário','Início','Fim','Brasília','Riscos Iniciados','Vigor','Vigência','Horário Oficial Local','Horário Oficial de Brasília','Local Standard Time','Período de Cobertura','Base de Contratação','Sinistros Ocorridos','Coverage Period','Contract Basis','Claims-Made','Occurrence-Based','Resseguro','risks attaching','contrato contínuo'],
+          simRule: 'Nomeia a base: "Riscos Iniciados", "Sinistros Ocorridos", "risks attaching", "losses occurring" ou "conforme a base de contratação".'
+        },
+        {
+          text: 'Deixa claro se tratar do horário oficial local (por exemplo: horário oficial de Brasília; local standard time).',
+          question: 'O contrato indica o horário de início e de término da vigência?',
+          positiveIndicators: ['Horário Oficial','Horário Oficial de Brasília','Local Standard Time','horário oficial local','00h','24h','00:00','23:59','horas de'],
+          negativeIndicators: [],
+          keywords: ['horas','Horário','Início','Fim','Brasília','Horário Oficial Local','Horário Oficial de Brasília','Local Standard Time'],
+          simRule: 'Há hora explícita (ex.: "das 00h de 01/01/2026 às 24h de 31/12/2026"). Só datas, sem horários = não.'
+        }
       ]
     }
   ];
 
-  // ── Analysis engine ──
-  function findKeywordMatches(text, keywords) {
-    const lower = text.toLowerCase();
-    const matched = [];
-    const contexts = [];
-    keywords.forEach(kw => {
-      const idx = lower.indexOf(kw.toLowerCase());
-      if (idx !== -1) {
-        matched.push(kw);
-        const start = Math.max(0, idx - 60);
-        const end = Math.min(text.length, idx + kw.length + 60);
-        contexts.push('...' + text.substring(start, end).trim() + '...');
+  // ── Analysis engine (location-aware, evidence-based) ──
+  function searchTermInPages(pagesText, term) {
+    const termLower = term.toLowerCase();
+    const results = [];
+    pagesText.forEach((pageText, pageIdx) => {
+      const pageLower = pageText.toLowerCase();
+      let idx = pageLower.indexOf(termLower);
+      while (idx !== -1) {
+        const start = Math.max(0, idx - 80);
+        const end = Math.min(pageText.length, idx + term.length + 80);
+        results.push({
+          term,
+          page: pageIdx + 1,
+          charIndex: idx,
+          context: pageText.substring(start, end).trim()
+        });
+        idx = pageLower.indexOf(termLower, idx + 1);
       }
     });
-    return { matched, contexts };
+    return results;
   }
 
-  function analyzeContract(text) {
-    const lower = text.toLowerCase();
+  function analyzeContract(pagesText) {
     return CRITERIA_DEF.map(group => {
       const items = group.criteria.map(criterion => {
-        let searchTerms = criterion.keywords.length > 0 ? criterion.keywords : (criterion.fallbackTerms || []);
-        let { matched, contexts } = findKeywordMatches(text, searchTerms);
+        const searchTerms = criterion.positiveIndicators || [];
+        const negTerms = criterion.negativeIndicators || [];
+        let allMatches = [];
 
-        // Apply exclude terms (Riscos cobertos)
-        if (criterion.excludeTerms) {
-          const hasExcluded = criterion.excludeTerms.some(t => lower.includes(t.toLowerCase()));
-          const hasRiscosCobertos = lower.includes('riscos cobertos');
-          if (!hasRiscosCobertos && hasExcluded) {
-            matched = [];
-            contexts = [];
-          }
-        }
+        searchTerms.forEach(term => {
+          const hits = searchTermInPages(pagesText, term);
+          allMatches.push(...hits);
+        });
 
-        // Special description rules
+        const fullLower = pagesText.join('\n').toLowerCase();
+        const hasNegative = negTerms.some(t => fullLower.includes(t.toLowerCase()));
+
+        const uniqueTerms = [...new Set(allMatches.map(m => m.term.toLowerCase()))];
+        const bestMatch = allMatches.length > 0 ? allMatches[0] : null;
+
         let status;
-        let forceStatus = null;
-
-        if (criterion.description) {
-          const desc = criterion.description.toLowerCase();
-          // INSOLVÊNCIA item 4: "sinistro pendente" → Não atende
-          if (desc.includes('não deve atender') && desc.includes('sinistro pendente')) {
-            if (lower.includes('sinistro pendente')) {
-              forceStatus = 'Não atende';
-            }
-          }
-          // CANCELAMENTO item 1: "mudanças na lei" → Atende
-          if (desc.includes('mudanças na lei') || desc.includes('modificação na lei')) {
-            if (lower.includes('mudanças na lei') || lower.includes('modificação na lei') || lower.includes('mudancas na lei')) {
-              forceStatus = 'Atende';
-            }
-          }
-          // VIGÊNCIA item 1: "sinistros ocorridos" → Atende
-          if (desc.includes('sinistros ocorridos') && desc.includes('atender')) {
-            if (lower.includes('sinistros ocorridos')) {
-              forceStatus = 'Atende';
-            }
-          }
-          // RISCOS COBERTOS: explicit "riscos cobertos" required
-          if (desc.includes('riscos cobertos') && desc.includes('menções explícitas')) {
-            if (lower.includes('riscos cobertos')) {
-              forceStatus = 'Atende';
-            } else if (matched.length > 0) {
-              forceStatus = 'Atende parcialmente';
-            }
-          }
-        }
-
-        if (forceStatus) {
-          status = forceStatus;
-        } else if (matched.length >= 2) {
+        if (hasNegative && uniqueTerms.length < 2) {
+          status = uniqueTerms.length === 0 ? 'Não atende' : 'Não atende';
+        } else if (uniqueTerms.length >= 2) {
           status = 'Atende';
-        } else if (matched.length === 1) {
+        } else if (uniqueTerms.length === 1) {
           status = 'Atende parcialmente';
         } else {
           status = 'Não atende';
         }
 
-        const note = generateNote(criterion, matched, searchTerms, contexts, status);
-        return { text: criterion.text, status, note };
+        const location = bestMatch
+          ? { page: bestMatch.page, position: 'Página ' + bestMatch.page }
+          : null;
+
+        const evidence = bestMatch ? bestMatch.context : null;
+
+        const reasoning = generateReasoning(criterion, allMatches, uniqueTerms, searchTerms, status, evidence);
+
+        return {
+          text: criterion.text,
+          question: criterion.question,
+          status,
+          note: reasoning,
+          location,
+          evidence,
+          contract_reference: bestMatch ? 'Página ' + bestMatch.page : null
+        };
       });
 
-      const hasAny = items.some(i => i.status === 'Atende' || i.status === 'Atende parcialmente');
+      const allAtende = items.every(i => i.status === 'Atende');
+      const allNao = items.every(i => i.status === 'Não atende');
+      const groupStatus = allNao ? 'Ausente' : 'Presente';
+
       return {
         title: group.title,
         id: group.id,
-        status: hasAny ? 'Presente' : 'Ausente',
+        mandatory: group.mandatory,
+        status: groupStatus,
         docClause: null,
         items
       };
     });
   }
 
-  function generateNote(criterion, matched, allTerms, contexts, status) {
+  function generateReasoning(criterion, allMatches, uniqueTerms, searchTerms, status, evidence) {
+    const q = criterion.question;
     if (status === 'Atende') {
-      const kws = matched.slice(0, 3).map(k => '"' + k + '"').join(', ');
-      const ctx = contexts.length > 0 ? ' Trecho: ' + contexts[0].substring(0, 120) : '';
-      return 'Foram encontradas menções a ' + kws + ' no documento.' + ctx;
+      const termsFound = uniqueTerms.slice(0, 4).map(t => '“' + t + '”').join(', ');
+      let r = q + ' Sim. Foram identificadas menções a ' + termsFound + ' no contrato.';
+      return r;
     }
     if (status === 'Atende parcialmente') {
-      const found = matched.map(k => '"' + k + '"').join(', ');
-      const missing = allTerms.filter(t => !matched.includes(t)).slice(0, 3).map(k => '"' + k + '"').join(', ');
-      return 'Encontrada menção parcial a ' + found + ', porém os demais termos esperados (' + missing + ') não foram identificados.';
+      const found = uniqueTerms.map(t => '“' + t + '”').join(', ');
+      const missing = searchTerms.filter(t => !uniqueTerms.includes(t.toLowerCase())).slice(0, 3).map(t => '“' + t + '”').join(', ');
+      let r = q + ' Parcialmente. Foi encontrada menção a ' + found;
+      if (missing) r += ', porém termos como ' + missing + ' não foram localizados';
+      r += '.';
+      return r;
     }
-    const expected = allTerms.slice(0, 4).map(k => '"' + k + '"').join(', ');
-    if (expected) {
-      return 'Não foram encontradas menções a ' + expected + ' no documento.';
-    }
-    return 'Não foram encontrados termos relacionados a este critério no documento.';
+    const expected = searchTerms.slice(0, 4).map(t => '“' + t + '”').join(', ');
+    let r = q + ' Não. ';
+    r += expected
+      ? 'Não foram encontradas menções a ' + expected + ' no documento.'
+      : 'Não foram encontrados termos relacionados a este critério no documento.';
+    r += ' Regra: ' + criterion.simRule;
+    return r;
   }
 
   // ── Render document ──
@@ -1332,6 +1431,7 @@
     pages.forEach((pageText, i) => {
       const pageDiv = document.createElement('div');
       pageDiv.className = 'doc-page';
+      pageDiv.id = 'doc-page-' + (i + 1);
 
       let paragraphs = pageText.split(/\n/).filter(p => p.trim().length > 0);
       if (paragraphs.length <= 1 && pageText.trim().length > 0) {
@@ -1400,13 +1500,24 @@
         ).join('');
 
         let logsHtml = '';
-        if (item.logs) {
+        if (item.logs && item.logs.length) {
+          let entriesHtml = '';
           item.logs.forEach(log => {
-            logsHtml += '<div class="log-entry"><div class="log-avatar">' + esc(log.initials) + '</div><div class="log-content"><div class="log-meta">' + esc(log.name) + ' · ' + esc(log.from) + ' → ' + esc(log.to) + ' · ' + esc(log.date) + '</div><div class="log-text">' + esc(log.text) + '</div></div></div>';
+            const pCls = log.to === 'Atende' ? 'pill-present' : (log.to === 'Não atende' ? 'pill-absent' : 'pill-partial');
+            entriesHtml += '<div class="log-entry"><div class="log-avatar">' + esc(log.initials) + '</div><div class="log-content"><div class="log-meta"><strong>' + esc(log.name) + '</strong> · ' + esc(log.date) + '</div><div class="log-change"><span class="log-from">' + esc(log.from) + '</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg><span class="clause-status-pill ' + pCls + '" style="font-size:10px;padding:1px 6px">' + esc(log.to) + '</span></div><div class="log-text">' + esc(log.text) + '</div></div></div>';
           });
+          logsHtml = '<div class="log-section"><div class="log-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Histórico de alterações</div>' + entriesHtml + '</div>';
         }
 
-        itemsHtml += '<div class="clause-item"><div class="clause-item-row"><div class="clause-item-text">' + esc(item.text) + '</div><select class="clause-item-select">' + selOpts + '</select><div class="status-dot">' + iconSvg(item.status) + '</div></div><div class="ai-note ' + noteClass[item.status] + '"><div class="ai-note-icon">' + noteIconSvg(item.status) + '</div><div class="ai-note-content"><div class="ai-note-label ' + labelClass[item.status] + '">Análise automática</div><div class="ai-note-text">' + esc(item.note) + '</div></div></div>' + logsHtml + '</div>';
+        const locBadge = item.location
+          ? '<button class="loc-badge" onclick="event.stopPropagation();scrollToPage(' + item.location.page + ')" title="Ver no contrato"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>p.' + item.location.page + '</button>'
+          : '';
+
+        const evidenceHtml = item.evidence
+          ? '<div class="evidence-block"><span class="evidence-label">Trecho</span><span class="evidence-text">“' + esc(item.evidence.substring(0, 200)) + '”</span></div>'
+          : '';
+
+        itemsHtml += '<div class="clause-item"><div class="clause-item-row"><div class="clause-item-text">' + esc(item.text) + locBadge + '</div><select class="clause-item-select">' + selOpts + '</select><div class="status-dot">' + iconSvg(item.status) + '</div></div><div class="ai-note ' + noteClass[item.status] + '"><div class="ai-note-icon">' + noteIconSvg(item.status) + '</div><div class="ai-note-content"><div class="ai-note-text">' + esc(item.note) + '</div>' + evidenceHtml + '</div></div>' + logsHtml + '</div>';
       });
 
       const groupHtml = '<div class="clause-group' + (isFirst ? ' expanded' : '') + '" id="' + gId + '"><div class="clause-group-header" onclick="toggleClause(\'' + gId + '\',\'' + iId + '\'' + (group.docClause ? ',\'' + group.docClause + '\'' : ',null') + ')"><div class="clause-group-title"><svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>' + esc(group.title) + '</span><div class="mandatory-badge" title="Obrigatória"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div></div><div style="text-align:right"><span class="clause-status-pill ' + pillClass + '">' + group.status + '</span></div></div><div class="clause-items" id="' + iId + '"' + (isFirst ? '' : ' hidden') + '>' + itemsHtml + '</div></div>';
@@ -1417,11 +1528,20 @@
 
   function initWorkspace() {
     renderDocument(extractedPages, uploadedFileName);
-    CHECKLIST = analyzeContract(fullText);
+    CHECKLIST = analyzeContract(extractedPages);
     renderChecklist();
     updatePendingCount();
     initFilters();
     initModal();
+  }
+
+  function scrollToPage(pageNum) {
+    const el = document.getElementById('doc-page-' + pageNum);
+    if (el) {
+      el.classList.add('highlighted');
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => el.classList.remove('highlighted'), 2400);
+    }
   }
 
   // ── Expand / collapse ──
@@ -1487,8 +1607,15 @@
   // ── Status helpers ──
   function updateStatusDot(item, status) {
     const dot = item.querySelector('.status-dot');
-    if (!dot) return;
-    dot.innerHTML = iconSvg(status);
+    if (dot) dot.innerHTML = iconSvg(status);
+
+    const note = item.querySelector('.ai-note');
+    if (note) {
+      note.classList.remove('note-success', 'note-warning', 'note-danger');
+      note.classList.add(noteClass[status]);
+      const icon = note.querySelector('.ai-note-icon');
+      if (icon) icon.innerHTML = noteIconSvg(status);
+    }
   }
 
   function updatePendingCount() {
@@ -1560,10 +1687,31 @@
 
       const now = new Date();
       const date = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      if (!item.querySelector('.log-section')) {
+        const section = document.createElement('div');
+        section.className = 'log-section';
+        section.innerHTML = '<div class="log-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Histórico de alterações</div>';
+        item.appendChild(section);
+      }
+
+      const section = item.querySelector('.log-section');
       const entry = document.createElement('div');
       entry.className = 'log-entry';
-      entry.innerHTML = '<div class="log-avatar">AC</div><div class="log-content"><div class="log-meta">Anelise Costa · ' + prevValue + ' → ' + newVal + ' · ' + date + '</div><div class="log-text">' + esc(text) + '</div></div>';
-      item.appendChild(entry);
+      const newPillCls = newVal === 'Atende' ? 'pill-present' : (newVal === 'Não atende' ? 'pill-absent' : 'pill-partial');
+      entry.innerHTML = '<div class="log-avatar">AC</div><div class="log-content"><div class="log-meta"><strong>Anelise Costa</strong> · ' + date + '</div><div class="log-change"><span class="log-from">' + esc(prevValue) + '</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg><span class="clause-status-pill ' + newPillCls + '" style="font-size:10px;padding:1px 6px">' + esc(newVal) + '</span></div><div class="log-text">' + esc(text) + '</div></div>';
+      section.appendChild(entry);
+
+      // Persist log in CHECKLIST data
+      const itemIdx = Array.from(item.parentElement.children).indexOf(item);
+      const group = item.closest('.clause-group');
+      const groupIdx = Array.from(group.parentElement.querySelectorAll('.clause-group')).indexOf(group);
+      if (CHECKLIST[groupIdx] && CHECKLIST[groupIdx].items[itemIdx]) {
+        const cItem = CHECKLIST[groupIdx].items[itemIdx];
+        cItem.status = newVal;
+        if (!cItem.logs) cItem.logs = [];
+        cItem.logs.push({ initials: 'AC', name: 'Anelise Costa', from: prevValue, to: newVal, date: date, text: text });
+      }
 
       updatePendingCount();
       activeSelect = null;
